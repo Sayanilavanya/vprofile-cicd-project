@@ -1,25 +1,55 @@
-# Prerequisites
-#
-- JDK 17 or 21
-- Maven 3.9
-- MySQL 8
+# VProfile CI/CD Pipeline Automation
 
-# Technologies 
-- Spring MVC
-- Spring Security
-- Spring Data JPA
+## Project Overview
+Implemented CI/CD pipeline using Jenkins, SonarQube, Nexus, and Slack.
+
+## DevOps Tools Used
+- GitHub
+- Jenkins
 - Maven
-- JSP
-- Tomcat
-- MySQL
-- Memcached
-- Rabbitmq
-- ElasticSearch
-# Database
-Here,we used Mysql DB 
-sql dump file:
-- /src/main/resources/db_backup.sql
-- db_backup.sql file is a mysql dump file.we have to import this dump to mysql db server
-- > mysql -u <user_name> -p accounts < db_backup.sql
+- SonarQube
+- Nexus Repository
+- Slack
+
+## CI/CD Pipeline Flow
+GitHub
+ ↓
+Jenkins
+ ↓
+Maven Build
+ ↓
+SonarQube Analysis
+ ↓
+Nexus Artifact Upload
+ ↓
+Slack Notification
 
 
+## Application Details
+
+### Prerequisites
+JDK 17 or 21
+Maven 3.9
+MySQL 8
+
+### Technologies
+Spring MVC
+Spring Security
+Spring Data JPA
+Maven
+JSP
+Tomcat
+MySQL
+Memcached
+Rabbitmq
+ElasticSearch
+
+### Database Setup
+
+Here, we used MySQL DB SQL dump file:
+
+/src/main/resources/db_backup.sql
+
+Import database:
+
+mysql -u <user_name> -p accounts < db_backup.sql

@@ -306,5 +306,20 @@ Jenkins
 
 ---
 
+## Jenkins Pipeline
+![Jenkins Pipeline](screenshots/Jenkins.jpeg)
 
+## SonarQube Analysis
+![SonarQube](screenshots/SonarQube.jpeg)
 
+## Nexus Repository
+![Nexus](screenshots/Nexus.jpeg)
+
+## Slack Notification
+![Slack](screenshots/Slack Notification.jpeg)
+
+## Pipeline
+![Slack](screenshots/pipeline.jpeg)
+
+## Aws EC2 servers
+![Slack](screenshots/Ec2 servers.jpeg)

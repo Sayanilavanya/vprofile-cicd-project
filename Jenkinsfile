@@ -1,121 +1,155 @@
 pipeline {
-    
-	agent any
-/*	
-	tools {
-        maven "maven3"
+    agent any
+
+    tools {
+        jdk 'JDK21'
+        maven 'MAVEN21'
     }
-*/	
-    environment {
-        NEXUS_VERSION = "nexus3"
-        NEXUS_PROTOCOL = "http"
-        NEXUS_URL = "172.31.40.209:8081"
-        NEXUS_REPOSITORY = "vprofile-release"
-	NEXUS_REPO_ID    = "vprofile-release"
-        NEXUS_CREDENTIAL_ID = "nexuslogin"
-        ARTVERSION = "${env.BUILD_ID}"
+     environment {
+        SCANNER_HOME = tool 'sonar8'
+        registryCredential = 'ecr:us-east-1:awstoken'
+    vprofileRegistry = 'https://210806258649.dkr.ecr.us-east-1.amazonaws.com'
+    imageName = '210806258649.dkr.ecr.us-east-1.amazonaws.com/vprofile'
+    cluster = "vproappcluster"
+        service = "vproappservice-service-ydzob4sf"
     }
-	
-    stages{
-        
-        stage('BUILD'){
+ 
+
+    stages {
+
+        stage('Clean Workspace') {
             steps {
-                sh 'mvn clean install -DskipTests'
-            }
-            post {
-                success {
-                    echo 'Now Archiving...'
-                    archiveArtifacts artifacts: '**/target/*.war'
-                }
+                cleanWs()
             }
         }
 
-	stage('UNIT TEST'){
+        stage('Checkout Code') {
+            steps {
+                git branch: 'docker',
+                    url: 'https://github.com/hkhcoder/vprofile-project'
+            }
+        }
+
+        stage('Verify Tools') {
+            steps {
+                sh '''
+                    echo "Java Version"
+                    java -version
+
+                    echo "Maven Version"
+                    mvn -version
+                '''
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Unit Test') {
             steps {
                 sh 'mvn test'
             }
         }
 
-	stage('INTEGRATION TEST'){
-            steps {
-                sh 'mvn verify -DskipUnitTests'
-            }
-        }
-		
-        stage ('CODE ANALYSIS WITH CHECKSTYLE'){
+        stage('Checkstyle Analysis') {
             steps {
                 sh 'mvn checkstyle:checkstyle'
             }
-            post {
-                success {
-                    echo 'Generated Analysis Result'
-                }
-            }
         }
 
-        stage('CODE ANALYSIS with SONARQUBE') {
-          
-		  environment {
-             scannerHome = tool 'sonarscanner4'
-          }
-
-          steps {
-            withSonarQubeEnv('sonar-pro') {
-               sh '''${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=vprofile \
-                   -Dsonar.projectName=vprofile-repo \
-                   -Dsonar.projectVersion=1.0 \
-                   -Dsonar.sources=src/ \
-                   -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
-                   -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                   -Dsonar.jacoco.reportsPath=target/jacoco.exec \
-                   -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml'''
-            }
-
-            timeout(time: 10, unit: 'MINUTES') {
-               waitForQualityGate abortPipeline: true
-            }
-          }
-        }
-
-        stage("Publish to Nexus Repository Manager") {
+        stage('Package Application') {
             steps {
-                script {
-                    pom = readMavenPom file: "pom.xml";
-                    filesByGlob = findFiles(glob: "target/*.${pom.packaging}");
-                    echo "${filesByGlob[0].name} ${filesByGlob[0].path} ${filesByGlob[0].directory} ${filesByGlob[0].length} ${filesByGlob[0].lastModified}"
-                    artifactPath = filesByGlob[0].path;
-                    artifactExists = fileExists artifactPath;
-                    if(artifactExists) {
-                        echo "*** File: ${artifactPath}, group: ${pom.groupId}, packaging: ${pom.packaging}, version ${pom.version} ARTVERSION";
-                        nexusArtifactUploader(
-                            nexusVersion: NEXUS_VERSION,
-                            protocol: NEXUS_PROTOCOL,
-                            nexusUrl: NEXUS_URL,
-                            groupId: pom.groupId,
-                            version: ARTVERSION,
-                            repository: NEXUS_REPOSITORY,
-                            credentialsId: NEXUS_CREDENTIAL_ID,
-                            artifacts: [
-                                [artifactId: pom.artifactId,
-                                classifier: '',
-                                file: artifactPath,
-                                type: pom.packaging],
-                                [artifactId: pom.artifactId,
-                                classifier: '',
-                                file: "pom.xml",
-                                type: "pom"]
-                            ]
-                        );
-                    } 
-		    else {
-                        error "*** File: ${artifactPath}, could not be found";
-                    }
-                }
+                sh 'mvn package -DskipTests'
             }
         }
 
-
+        stage('Archive Artifact') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+            }
+        }
+        stage('Upload Artifact to Nexus') {
+    steps {
+        nexusArtifactUploader(
+            nexusVersion: 'nexus3',
+            protocol: 'http',
+            nexusUrl: '172.31.95.104:8081',
+            groupId: 'QA',
+            version: "${env.BUILD_ID}",
+            repository: 'vprofiledocker',
+            credentialsId: 'Nexus',
+            artifacts: [
+                [
+                    artifactId: 'vprofile',
+                    classifier: '',
+                    file: 'target/vprofile-v2.war',
+                    type: 'war'
+                ]
+            ]
+        )
     }
+}
+stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarscanner') {
+                    sh """
+                        ${SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=vprofile \
+                        -Dsonar.projectName=vprofile \
+                        -Dsonar.sources=src \
+                        -Dsonar.java.binaries=target/classes
+                    """
+                }
+            }
+        }
+        stage('Build App Image') {
+    steps {
+        script {
+            dockerImage = docker.build( imageName + ":${BUILD_NUMBER}",
+                "./Docker-files/app/multistage/"
+            )
+        }
+    }
+}
 
+stage('Upload App Image') {
+    steps {
+        script {
+            docker.withRegistry(
+                vprofileRegistry,
+                registryCredential
+            ) {
 
+                dockerImage.push("${BUILD_NUMBER}")
+                dockerImage.push("latest")
+
+            }
+        }
+    }
+}
+stage('Deploy to ECS') {
+    steps {
+        withAWS(credentials: 'awstoken', region: 'us-east-1') {
+            sh "aws ecs update-service --cluster ${cluster} --service ${service} --force-new-deployment"
+        }
+    }
+}
+       }
+
+    post {
+        success {
+            echo 'Build completed successfully.'
+        }
+
+        failure {
+            echo 'Build failed. Please check the Jenkins Console Output.'
+        }
+
+        always {
+            cleanWs()
+        }
+    }
 }

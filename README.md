@@ -316,10 +316,10 @@ Jenkins
 ![Nexus](screenshots/Nexus.jpeg)
 
 ## Slack Notification
-![Slack](screenshots/Slack Notification.jpeg)
+![Slack](screenshots/slacknotification.jpeg)
 
 ## Pipeline
 ![Slack](screenshots/pipeline.jpeg)
 
 ## Aws EC2 servers
-![Slack](screenshots/Ec2 servers.jpeg)
+![Slack](screenshots/ec2server.jpeg)
